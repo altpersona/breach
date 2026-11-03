@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>BREACH — a Standardvibeware game</title>
+<meta name="description" content="BREACH — a radial bullet hell. The ring is the health bar. Produced by Standardvibeware.">
+<meta property="og:title" content="BREACH">
+<meta property="og:description" content="A radial bullet hell where the ring is the health bar. Produced by Standardvibeware.">
+<meta property="og:site_name" content="Standardvibeware">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #05040a; overflow: hidden; }
+  body { display: grid; place-items: center; }
+  #frame { position: relative; line-height: 0; }
+  canvas {
+    display: block;
+    background: #07060e;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  #scan {
+    position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background: repeating-linear-gradient(to bottom,
+      rgba(0,0,0,.22) 0 1px, rgba(0,0,0,0) 1px 3px);
+  }
+  #vign {
+    position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 70px 18px rgba(0,0,0,.8);
+  }
+</style>
+</head>
+<body>
+  <div id="frame">
+    <canvas id="cv" width="320" height="320"></canvas>
+    <div id="scan"></div>
+    <div id="vign"></div>
+  </div>
+  <script src="src/font.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/game.js"></script>
+</body>
+</html>

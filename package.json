@@ -1,0 +1,32 @@
+{
+  "name": "breach",
+  "version": "1.0.0",
+  "description": "BREACH — a radial bullet hell. The ring is the health bar. Produced by Standardvibeware.",
+  "main": "index.html",
+  "scripts": {
+    "check": "node --check src/font.js && node --check src/audio.js && node --check src/game.js",
+    "test": "node test/spec.js",
+    "test:e2e": "node test/e2e.js",
+    "test:layout": "node test/layout.js",
+    "test:audio": "node test/audio.js",
+    "test:balance": "node test/balance.js 5",
+    "test:run": "node test/run.js 3",
+    "shots": "node test/shots.js",
+    "verify": "npm run check && node test/spec.js && node test/e2e.js && node test/layout.js && node test/audio.js"
+  },
+  "keywords": [
+    "game",
+    "bullet-hell",
+    "canvas",
+    "8-bit",
+    "breach",
+    "standardvibeware"
+  ],
+  "license": "MIT",
+  "homepage": "https://standardvibeware.click",
+  "author": "Standardvibeware",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/altpersona/breach.git"
+  }
+}

@@ -1,0 +1,18 @@
+# Build and tooling artefacts
+node_modules/
+npm-debug.log*
+.pnpm-debug.log*
+
+# Test output (regenerate with `npm run shots`)
+test/shots/*.png
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Local scratch
+tmp/
+*.local
