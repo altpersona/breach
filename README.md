@@ -156,6 +156,7 @@ node test/audio.js      # the synth actually produces non-silent signal
 node test/balance.js 5  # bot survival per wave, N trials each (slow: ~1 min)
 node test/run.js 3      # continuous runs to game over; reports depth reached
 node test/shots.js      # renders screenshots into test/shots/
+node test/live.js      # boots the PUBLISHED game from its public URL in Chrome
 ```
 
 `test/spec.js` covers the ring-damage model, interception, movement, wave

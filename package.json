@@ -12,7 +12,8 @@
     "test:balance": "node test/balance.js 5",
     "test:run": "node test/run.js 3",
     "shots": "node test/shots.js",
-    "verify": "npm run check && node test/spec.js && node test/e2e.js && node test/layout.js && node test/audio.js"
+    "verify": "npm run check && node test/spec.js && node test/e2e.js && node test/layout.js && node test/audio.js",
+    "test:live": "node test/live.js"
   },
   "keywords": [
     "game",
