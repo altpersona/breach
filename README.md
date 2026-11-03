@@ -156,13 +156,17 @@ node test/audio.js      # the synth actually produces non-silent signal
 node test/balance.js 5  # bot survival per wave, N trials each (slow: ~1 min)
 node test/run.js 3      # continuous runs to game over; reports depth reached
 node test/shots.js      # renders screenshots into test/shots/
-node test/live.js      # boots the PUBLISHED game from its public URL in Chrome
+node test/live.js       # boots the PUBLISHED game from its public URL in Chrome
+node test/sweep-capacity.js 3  # tuning sweep; patches a constant, always restores
 ```
 
 `test/spec.js` covers the ring-damage model, interception, movement, wave
 progression, fairness invariants, NaN safety over long runs, and drawing every
 game state. It boots the real game files in a stubbed DOM, so it tests the
 shipped code rather than a copy.
+
+`test/bot.js` holds the single test pilot. Every probe flies the same one — copies
+had already drifted between suites, which made their numbers incomparable.
 
 `test/balance.js` is the interesting one: a bot that only understands "which
 bullet lands first and can I reach its spoke" plays each wave repeatedly, and

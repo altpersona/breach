@@ -72,7 +72,6 @@
   var PLAYER_DMG_BULLET = 1;   // an enemy round absorbed by the hull
   var PLAYER_DMG_RAM = 2;      // flying into a ship or a boss
   var HULL_REGEN_TIME = 9;     // seconds without being hit to regain one point
-  var HULL_REGEN_MAX = 3;      // never regains beyond full
 
   var PLAYER_ARC_SPEED = 3.05;   // rad/s free movement
   var FOCUS_SCALE = 0.40;        // hold shift/space to creep for precision
@@ -190,7 +189,6 @@
   }
 
   var C = {
-    bg:        '#06050c',
     floor1:    '#0a0817',
     floor2:    '#0d0a1d',
     grid:      '#191333',
@@ -200,7 +198,6 @@
     corePulse: '#c8b6ff',
     ringOk:    '#5ce1e6',
     ringOkDim: '#2c7a86',
-    ringBroken:'#3a1a2e',
     ringHot:   '#ff3860',
     ringWarn:  '#ffb03a',
     player:    '#7dfcb0',
@@ -214,7 +211,6 @@
     turret:    '#ff6bcb',
     splitter:  '#6bb6ff',
     boss:      '#ff3b3b',
-    bossCore:  '#ffb3b3',
     hud:       '#cdc6ff',
     hudDim:    '#544d85',
     white:     '#ffffff'
@@ -430,7 +426,7 @@
   // Does this kill shed a chip? Chance by type, with a guaranteed drop after
   // DROP_PITY dry kills so an unlucky run still progresses.
   function shouldDrop(w, e) {
-    if ((w.dryKills || 0) >= DROP_PITY) return true;
+    if (w.dryKills >= DROP_PITY) return true;
     var chance = DROP_CHANCE[e.type];
     if (chance == null) chance = 0.4;
     return Math.random() < chance;
@@ -523,11 +519,9 @@
 
       if (bm.spent) continue;
 
-      // A beam is pulsed (1.35s of live lane), not a permanent field, and it hurts
-      // the ship as much as the ring. It is not immune to the hull — that was a
-      // hack I put in to mask bad tuning, and it made the most lethal thing on the
-      // field harmless. Fairness comes from the beam being slow enough to outrun,
-      // not from the ship ignoring it.
+      // A beam is pulsed (1.35s of live lane), not a permanent field, and it
+      // damages the ship as well as the ring. Fairness comes from the sweep being
+      // slow enough to outrun, not from the ship being exempt from it.
       var arcToPlayer = Math.abs(angDelta(bm.ang, p.ang));
       if (arcToPlayer < bm.width + 0.02) {
         bm.spent = true;
@@ -790,7 +784,7 @@
     // The ring pulse is the damage readout. Its strength tracks how significant
     // the hit was (1 chip vs a whole enemy breaching), so the player can feel
     // severity without reading the HUD.
-    w.ringPulse = Math.min(1, (w.ringPulse || 0) + 0.34 + taken * 0.22);
+    w.ringPulse = Math.min(1, w.ringPulse + 0.34 + taken * 0.22);
     w.ringPulseAng = ang;
     w.shake = Math.min(9, w.shake + 4 + taken * 2);
     w.flash = Math.min(1, w.flash + 0.18 + taken * 0.12);
@@ -1131,9 +1125,9 @@
       }
     } else {
       // Aimed burst on the player's spoke, spaced so one block answers the pair.
-      // NOTE: the cooldown must be armed here. Setting atkPhase above the
-      // threshold instead (as this did) re-fired every frame and buried the arena
-      // in ~150 bullets in 20s.
+      // The cooldown must be armed to zero here: setting atkPhase *above* the
+      // threshold leaves the condition true and re-fires every frame (~150
+      // bullets in 20s).
       e.atkPhase += dt;
       if (e.atkPhase >= 1.15 / rate) {
         e.atkPhase = 0;
@@ -1181,7 +1175,7 @@
       spawnToken(w, e.ang, e.r + 2, null, e.type);
       w.dryKills = 0;
     } else {
-      w.dryKills = (w.dryKills || 0) + 1;
+      w.dryKills += 1;
     }
 
     if (big) {
@@ -1385,7 +1379,7 @@
       w.t += dt;
       w.flash = Math.max(0, w.flash - dt * 1.6);
       w.shake = Math.max(0, w.shake - dt * 12);
-      w.ringPulse = Math.max(0, (w.ringPulse || 0) - dt * 3.4);
+      w.ringPulse = Math.max(0, w.ringPulse - dt * 3.4);
       assignFireSlots(w);
       stepEnemies(w, dt);
       stepBullets(w, dt);
@@ -1410,7 +1404,7 @@
     w.flash = Math.max(0, w.flash - dt * 2.6);
     w.shake = Math.max(0, w.shake - dt * 26);
     // Ring pulse decays fast enough to read as a hit, slow enough to be seen.
-    w.ringPulse = Math.max(0, (w.ringPulse || 0) - dt * 3.4);
+    w.ringPulse = Math.max(0, w.ringPulse - dt * 3.4);
     if (w.banner) {
       w.banner.time -= dt;
       if (w.banner.time <= 0) w.banner = null;
@@ -1459,11 +1453,11 @@
   function stepPlayer(w, dt) {
     var p = w.player;
     p.stun = Math.max(0, p.stun - dt);
-    p.invuln = Math.max(0, (p.invuln || 0) - dt);
+    p.invuln = Math.max(0, p.invuln - dt);
     // Hull regen: a quiet stretch knits a point back. The clock resets on damage
     // (see playerDamage), so sustained fire still kills — this only forgives
     // isolated hits, which is what keeps the ring the primary pressure.
-    p.regen = (p.regen || 0) + dt;
+    p.regen += dt;
     if (p.hull > 0 && p.regen >= HULL_REGEN_TIME) {
       p.regen = 0;
       p.hull = Math.max(0, p.hull - 1);
@@ -1592,7 +1586,7 @@
       if (e.atkPhase >= 1.15 / rate) {
         e.atkPhase = 0;
         var t = Math.max(0.2, (RING_R - e.r) / BULLET_SPEED);
-        var pred = wrapPi(w.player.ang + (w.player.dir || 0) * PLAYER_ARC_SPEED * t * 0.7);
+        var pred = wrapPi(w.player.ang + w.player.dir * PLAYER_ARC_SPEED * t * 0.7);
         for (var k = -1; k <= 1; k++) {
           spawnBullet(w, e.ang, e.r + 4, BULLET_SPEED, angDelta(pred + k * 0.03, e.ang) / t);
         }
@@ -1955,7 +1949,7 @@
       for (var side = -1; side <= 1; side += 2) {
         for (var k = 0; k < 3; k++) {
           var spread = reach * (1 - k * 0.3);
-          var a = (w.ringPulseAng || 0) + side * spread;
+          var a = w.ringPulseAng + side * spread;
           ctx.globalAlpha = hot * (0.85 - k * 0.24);
           drawArcSegment(ctx, a - 0.07, a + 0.07, RING_R, thick);
         }
@@ -2810,8 +2804,7 @@
     dropPity: DROP_PITY,
     segHealTime: SEG_HEAL_TIME,
     fireInterval: function () { return fireInterval(world); },
-    barrels: function () { return barrels(world); },
-    step: function (n, dt) { for (var i = 0; i < (n || 1); i++) update(dt || 1 / 60); }
+    barrels: function () { return barrels(world); }
   };
 
   if (SELFTEST) {
