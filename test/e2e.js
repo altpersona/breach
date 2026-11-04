@@ -186,6 +186,72 @@ function check(name, cond, detail) {
   check('Enter restarts after game over', (await evaluate('CS.getState()')) === 'playing');
   check('restart resets to wave 1', (await evaluate('CS.world().wave')) === 1);
 
+  // --- phone: portrait viewport, touch emulation, genuine touch events
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
+  await send('Page.reload', { ignoreCache: true });
+  await sleep(300);
+  for (let i = 0; i < 60; i++) {
+    if (await evaluate('typeof CS === "object"')) break;
+    await sleep(150);
+  }
+  check('game boots in phone viewport', await evaluate('typeof CS === "object"'));
+  check('phone reports a coarse pointer', (await evaluate('matchMedia("(pointer: coarse)").matches')) === true);
+
+  const phoneRect = await evaluate('(function(){var r=document.getElementById("cv").getBoundingClientRect();return {w:r.width,h:r.height,top:r.top,left:r.left};})()');
+  check('canvas fits the phone viewport', phoneRect.w > 300 && phoneRect.w <= 390 && phoneRect.h > 300 && phoneRect.top >= 0,
+    JSON.stringify(phoneRect));
+
+  // a tap starts the run from the title screen
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 100, y: 700 }] });
+  await sleep(150);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(250);
+  check('touch tap starts the game', (await evaluate('CS.getState()')) === 'playing',
+    'state=' + await evaluate('CS.getState()'));
+
+  // the pause button is live while playing on a phone
+  check('pause button visible on phone',
+    (await evaluate('getComputedStyle(document.getElementById("pauseBtn")).display')) !== 'none');
+
+  // hold the left half -> rotate left (the only navigation, like the keys)
+  const ta = await evaluate('CS.world().player.ang');
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 90, y: 700 }] });
+  await sleep(400);
+  const tb = await evaluate('CS.world().player.ang');
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  check('touch on left half rotates left', tb < ta - 0.05, `a0=${ta} a1=${tb}`);
+
+  // hold the right half -> rotate right
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: 700 }] });
+  await sleep(400);
+  const tc = await evaluate('CS.world().player.ang');
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  check('touch on right half rotates right', tc > tb + 0.05, `a1=${tb} a2=${tc}`);
+
+  // both halves held -> braced: focus on
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 90, y: 700 }, { x: 300, y: 700 }] });
+  await sleep(250);
+  check('two thumbs brace with focus', (await evaluate('CS.world().focus')) === true);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(150);
+  check('focus drops when thumbs lift', (await evaluate('CS.world().focus')) === false);
+
+  // the pause button pauses; a tap anywhere resumes
+  const btn = await evaluate('(function(){var r=document.getElementById("pauseBtn").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: btn.x, y: btn.y }] });
+  await sleep(120);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(150);
+  check('pause button pauses', (await evaluate('CS.getState()')) === 'paused',
+    'state=' + await evaluate('CS.getState()'));
+
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 700 }] });
+  await sleep(120);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(150);
+  check('tap resumes from pause', (await evaluate('CS.getState()')) === 'playing');
+
   check('no uncaught page errors', errors.length === 0, errors.join(' | ').slice(0, 400));
 
   console.log('');

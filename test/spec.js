@@ -349,6 +349,100 @@ test('focus (held shift) slows rotation without stopping it', () => {
   assert.ok(slowDelta < fastDelta * 0.75, `focus should be slower (${slowDelta} vs ${fastDelta})`);
 });
 
+console.log('\n=== touch controls (phones) ===');
+
+// Synthetic touch pointer events through the same window listeners real
+// browsers fire. Harness viewport is 1280 wide: clientX < 640 = left half.
+const touch = (s, type, id, x) =>
+  s.env.dispatch(type, { pointerType: 'touch', pointerId: id, clientX: x, clientY: 700 });
+
+test('touching the left/right half rotates like the arrow keys', () => {
+  const s1 = sim();
+  s1.step(1);
+  touch(s1, 'pointerdown', 1, 100);
+  s1.step(10);
+  touch(s1, 'pointerup', 1, 100);
+  const left = s1.world.player.ang - (-Math.PI / 2);
+
+  const s2 = sim();
+  s2.step(1);
+  touch(s2, 'pointerdown', 1, 1000);
+  s2.step(10);
+  touch(s2, 'pointerup', 1, 1000);
+  const right = s2.world.player.ang - (-Math.PI / 2);
+
+  assert.ok(left < 0, 'left half decreases angle, got ' + left);
+  assert.ok(right > 0, 'right half increases angle, got ' + right);
+});
+
+test('both halves held = braced: holds position with focus on', () => {
+  const s = sim();
+  s.step(1);
+  touch(s, 'pointerdown', 1, 100);
+  touch(s, 'pointerdown', 2, 1000);
+  s.step(12);
+  assert.ok(Math.abs(s.world.player.ang - (-Math.PI / 2)) < 1e-9, 'ship holds position');
+  assert.strictEqual(s.world.focus, true, 'both halves engage focus');
+  touch(s, 'pointerup', 2, 1000);
+  s.step(2);
+  assert.strictEqual(s.world.focus, false, 'lifting one side drops focus');
+});
+
+test('a thumb dragged across the midline switches sides', () => {
+  const s = sim();
+  s.step(1);
+  touch(s, 'pointerdown', 1, 100);
+  s.step(10);
+  const mid = s.world.player.ang;
+  touch(s, 'pointermove', 1, 1000);
+  s.step(10);
+  touch(s, 'pointerup', 1, 1000);
+  assert.ok(mid < -Math.PI / 2, 'left phase rotated left');
+  assert.ok(s.world.player.ang > mid, 'right phase reversed direction');
+});
+
+test('pointercancel and blur leave no phantom thumb behind', () => {
+  const s = sim();
+  s.step(1);
+  touch(s, 'pointerdown', 1, 100);
+  touch(s, 'pointercancel', 1, 100);
+  s.step(10);
+  assert.ok(Math.abs(s.world.player.ang - (-Math.PI / 2)) < 1e-9, 'cancelled touch stops steering');
+
+  touch(s, 'pointerdown', 2, 100);
+  s.env.dispatch('blur', {});
+  assert.strictEqual(s.CS.getState(), 'paused', 'blur pauses');
+  s.CS.setState('playing');
+  s.step(10);
+  assert.ok(Math.abs(s.world.player.ang - (-Math.PI / 2)) < 1e-9, 'blur dropped the touch');
+});
+
+test('keyboard wins when keyboard and touch are both live', () => {
+  const s = sim();
+  s.step(1);
+  touch(s, 'pointerdown', 1, 1000);
+  s.env.key('keydown', 'ArrowLeft');
+  s.step(10);
+  assert.ok(s.world.player.ang < -Math.PI / 2, 'keyboard left beats touch right');
+});
+
+test('a tap starts the run, retries, and resumes from pause', () => {
+  const env = boot({}); // no selftest: boots to the title screen
+  const CS = env.CS;
+  assert.strictEqual(CS.getState(), 'title');
+  env.dispatch('pointerdown', { pointerType: 'touch', pointerId: 1, clientX: 100, clientY: 700 });
+  assert.strictEqual(CS.getState(), 'playing', 'tap starts the run');
+
+  CS.setState('gameover');
+  env.dispatch('pointerup', { pointerType: 'touch', pointerId: 1, clientX: 100, clientY: 700 });
+  env.dispatch('pointerdown', { pointerType: 'touch', pointerId: 2, clientX: 100, clientY: 700 });
+  assert.strictEqual(CS.getState(), 'playing', 'tap retries after game over');
+
+  CS.setState('paused');
+  env.dispatch('pointerdown', { pointerType: 'touch', pointerId: 3, clientX: 100, clientY: 700 });
+  assert.strictEqual(CS.getState(), 'playing', 'tap resumes from pause');
+});
+
 console.log('\n=== enemies & waves ===');
 
 test('all five wave-1 enemies arrive from the core and advance outward', () => {

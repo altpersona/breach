@@ -22,10 +22,15 @@ Open `index.html` in a browser. That's it — it runs from the file system
 | `Enter` | Start / retry |
 | `P` or `Esc` | Pause |
 | `M` | Mute |
+| Touch: hold left / right half of the screen | Rotate |
+| Touch: hold both halves | Focus |
+| Touch: tap | Start / retry / resume |
 
 Firing is automatic. Your job is positioning: block fire, and chase pickups.
 The ship does not follow the mouse — the arena is one-dimensional, so left/right
-is the whole control surface.
+is the whole control surface. On a phone the two screen halves stand in for the
+keys (they cover the letterbox too, so thumbs work anywhere), a corner button
+pauses, and backgrounding the app pauses automatically.
 
 ## How it works
 

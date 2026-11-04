@@ -256,8 +256,15 @@
 
   function fit() {
     var pad = 16;
-    var availW = Math.max(64, window.innerWidth - pad);
-    var availH = Math.max(64, window.innerHeight - pad);
+    var vw = window.innerWidth, vh = window.innerHeight;
+    // On phones the collapsing URL bar resizes visualViewport while innerHeight
+    // lags or disagrees; trust the visual one when it exists.
+    if (window.visualViewport) {
+      vw = window.visualViewport.width;
+      vh = window.visualViewport.height;
+    }
+    var availW = Math.max(64, vw - pad);
+    var availH = Math.max(64, vh - pad);
     // Allow going below 1x: on a viewport narrower than the native canvas the
     // old Math.max(1, ...) clamp forced an overflow instead of shrinking.
     var s = Math.min(availW / W, availH / H);
@@ -266,6 +273,7 @@
     canvas.style.height = Math.round(H * s) + 'px';
   }
   window.addEventListener('resize', fit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
   fit();
 
   /* ----------------------------------------------------------------------
@@ -333,7 +341,27 @@
      INPUT
      ---------------------------------------------------------------------- */
   var keys = {};
+  // Mouse state. pointer.down is the mouse-only hold-to-focus affordance; touch
+  // pointers never land here — they go through the touch-zone table below.
   var pointer = { active: false, x: 0, y: 0, down: false };
+  // Touch pointers by pointerId, each mapped to a screen half: -1 left, +1 right.
+  // Holding a half rotates that way; holding both halves braces (dir 0 + focus).
+  var touches = {};
+  // No keyboard on phones: on-screen text and the pause button swap over. Coarse
+  // pointer is checked too so touch-capable laptops keep the desktop wording.
+  var TOUCH = !!(navigator.maxTouchPoints > 0 && window.matchMedia &&
+                 window.matchMedia('(pointer: coarse)').matches);
+
+  function touchDir() {
+    var l = 0, r = 0;
+    for (var id in touches) { if (touches[id] < 0) l = 1; else r = 1; }
+    return r - l;
+  }
+  function touchFocus() {
+    var l = 0, r = 0;
+    for (var id in touches) { if (touches[id] < 0) l = 1; else r = 1; }
+    return !!(l && r);
+  }
 
   window.addEventListener('keydown', function (e) {
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'].indexOf(e.key) >= 0) {
@@ -369,10 +397,12 @@
 
   canvas.addEventListener('pointerdown', function (ev) {
     Sound.unlock();
-    var p = canvasPos(ev);
-    pointer.active = true; pointer.down = true;
-    pointer.x = p.x; pointer.y = p.y;
-    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+    if (ev.pointerType === 'mouse') {
+      pointer.active = true; pointer.down = true;
+      var p = canvasPos(ev);
+      pointer.x = p.x; pointer.y = p.y;
+      try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+    }
     if (state === 'title') startRun();
     else if (state === 'gameover') startRun();
   });
@@ -383,14 +413,71 @@
     if (ev.pointerType === 'mouse') pointer.active = true;
   });
 
-  window.addEventListener('pointerup', function () { pointer.down = false; });
+  // Touch zones cover the whole screen, not just the canvas, so thumbs work in
+  // the letterbox around the square arena on tall phone screens.
+  function touchSide(ev) { return ev.clientX < window.innerWidth / 2 ? -1 : 1; }
+
+  window.addEventListener('pointerdown', function (ev) {
+    if (ev.pointerType === 'mouse') return;
+    Sound.unlock();
+    if (state === 'title' || state === 'gameover') { startRun(); return; }
+    if (state === 'paused') { state = 'playing'; Sound.sfx.ui(); return; }
+    touches[ev.pointerId] = touchSide(ev);
+  });
+
+  window.addEventListener('pointermove', function (ev) {
+    if (ev.pointerType === 'mouse') return;
+    // A thumb dragged across the centre line switches sides mid-gesture, so
+    // one thumb is enough to play.
+    if (touches[ev.pointerId] !== undefined) touches[ev.pointerId] = touchSide(ev);
+  });
+
+  window.addEventListener('pointerup', function (ev) {
+    if (ev.pointerType === 'mouse') pointer.down = false;
+    else delete touches[ev.pointerId];
+  });
+  // The OS takes the pointer back (edge swipe, gesture, incoming call) without
+  // a pointerup; without this the ship would keep rotating forever.
+  window.addEventListener('pointercancel', function (ev) {
+    if (ev.pointerType !== 'mouse') delete touches[ev.pointerId];
+  });
+  canvas.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+
   canvas.addEventListener('pointerleave', function () {
     if (!pointer.down) pointer.active = false;
   });
   window.addEventListener('blur', function () {
     keys = {};
+    touches = {};
     if (state === 'playing') state = 'paused';
   });
+  // Phones do not reliably fire blur when the app is backgrounded;
+  // visibilitychange is the dependable signal there.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      touches = {};
+      if (state === 'playing') state = 'paused';
+    }
+  });
+
+  // Phones have no P key: a small DOM button in the corner does pause/resume.
+  // Hidden entirely on non-touch setups. stopPropagation keeps the tap out of
+  // the movement zones.
+  var pauseBtn = document.getElementById('pauseBtn');
+  if (pauseBtn) {
+    pauseBtn.style.display = 'none';
+    pauseBtn.addEventListener('pointerdown', function (ev) {
+      ev.stopPropagation();
+      Sound.unlock();
+      if (state === 'playing') { state = 'paused'; Sound.sfx.ui(); }
+      else if (state === 'paused') { state = 'playing'; Sound.sfx.ui(); }
+    });
+  }
+  function syncPauseBtn() {
+    if (!pauseBtn) return;
+    var show = TOUCH && (state === 'playing' || state === 'paused');
+    pauseBtn.style.display = show ? 'block' : 'none';
+  }
 
   /* ----------------------------------------------------------------------
      PARTICLE HELPERS
@@ -1470,11 +1557,14 @@
     var dir = 0;
     if (keys['ArrowLeft'] || keys['a'] || keys['A']) dir -= 1;
     if (keys['ArrowRight'] || keys['d'] || keys['D']) dir += 1;
+    // Keyboard wins if both are live (a phone with a keyboard attached).
+    if (dir === 0) dir = touchDir();
 
-    w.focus = !!(keys['Shift'] || keys[' '] || pointer.down);
+    w.focus = !!(keys['Shift'] || keys[' '] || pointer.down || touchFocus());
 
     // Strict left/right only. The arena is one-dimensional, so mouse steering was
-    // redundant with the keys and made precision play mushy.
+    // redundant with the keys and made precision play mushy. The touch zones map
+    // onto the same two directions — screen halves, not steering.
     p.dir = dir;
     if (dir !== 0) {
       var spd = PLAYER_ARC_SPEED * (w.focus ? FOCUS_SCALE : 1);
@@ -2628,14 +2718,21 @@
 
     var blink = Math.floor(w.t * 1.6) % 2 === 0;
     if (blink) {
-      Pixel.draw(ctx, 'PRESS ENTER', W / 2, 104, { color: C.white, align: 'center' });
+      Pixel.draw(ctx, TOUCH ? 'TAP TO START' : 'PRESS ENTER',
+        W / 2, 104, { color: C.white, align: 'center' });
     }
 
     // Controls live in the lower half, clear of the core.
-    Pixel.draw(ctx, 'LEFT/RIGHT = ROTATE', W / 2, 206, { color: C.hudDim, align: 'center' });
-    Pixel.draw(ctx, 'HOLD SHIFT = FOCUS', W / 2, 218, { color: C.hudDim, align: 'center' });
-    Pixel.draw(ctx, 'FIRE IS AUTOMATIC', W / 2, 230, { color: C.hudDim, align: 'center' });
-    Pixel.draw(ctx, 'M MUTE    P PAUSE', W / 2, 242, { color: C.hudDim, align: 'center' });
+    if (TOUCH) {
+      Pixel.draw(ctx, 'TOUCH SIDES = ROTATE', W / 2, 206, { color: C.hudDim, align: 'center' });
+      Pixel.draw(ctx, 'HOLD BOTH SIDES = FOCUS', W / 2, 218, { color: C.hudDim, align: 'center' });
+      Pixel.draw(ctx, 'FIRE IS AUTOMATIC', W / 2, 230, { color: C.hudDim, align: 'center' });
+    } else {
+      Pixel.draw(ctx, 'LEFT/RIGHT = ROTATE', W / 2, 206, { color: C.hudDim, align: 'center' });
+      Pixel.draw(ctx, 'HOLD SHIFT = FOCUS', W / 2, 218, { color: C.hudDim, align: 'center' });
+      Pixel.draw(ctx, 'FIRE IS AUTOMATIC', W / 2, 230, { color: C.hudDim, align: 'center' });
+      Pixel.draw(ctx, 'M MUTE    P PAUSE', W / 2, 242, { color: C.hudDim, align: 'center' });
+    }
 
     if (best > 0) {
       Pixel.draw(ctx, 'BEST WAVE ' + pad2(best), W / 2, 262, { color: C.ringWarn, align: 'center' });
@@ -2681,18 +2778,21 @@
     // No delay gate here: the playout already gave the failure its moment, so the
     // retry prompt can be immediate and always visible.
     var blink2 = Math.floor(w.t * 1.6) % 2 === 0;
-    if (blink2) Pixel.draw(ctx, 'PRESS ENTER TO RETRY', W / 2, 222, { color: C.white, align: 'center' });
+    if (blink2) Pixel.draw(ctx, TOUCH ? 'TAP TO RETRY' : 'PRESS ENTER TO RETRY',
+      W / 2, 222, { color: C.white, align: 'center' });
   }
 
   function drawPause(w) {
     ctx.fillStyle = 'rgba(4,3,10,0.7)';
     ctx.fillRect(0, 0, W, H);
     Pixel.draw(ctx, 'PAUSED', W / 2, 140, { color: C.hud, scale: 2, align: 'center' });
-    Pixel.draw(ctx, 'P TO RESUME', W / 2, 170, { color: C.hudDim, align: 'center' });
+    Pixel.draw(ctx, TOUCH ? 'TAP TO RESUME' : 'P TO RESUME',
+      W / 2, 170, { color: C.hudDim, align: 'center' });
   }
 
   function draw() {
     var w = world || newWorld();
+    syncPauseBtn();
 
     ctx.save();
     var sx = 0, sy = 0;
