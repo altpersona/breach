@@ -154,8 +154,8 @@ Everything is verifiable. There is no build step; the "build" is a syntax check
 plus these suites.
 
 ```sh
-node test/spec.js       # 71 unit/integration tests, headless (no browser)
-node test/e2e.js        # 21 checks in real Chrome via CDP (real key/mouse events)
+node test/spec.js       # 77 unit/integration tests, headless (no browser)
+node test/e2e.js        # 31 checks in real Chrome via CDP (real key, touch and pointer events)
 node test/layout.js     # canvas fits 8 viewports, incl. narrower-than-native
 node test/audio.js      # the synth actually produces non-silent signal
 node test/balance.js 5  # bot survival per wave, N trials each (slow: ~1 min)
