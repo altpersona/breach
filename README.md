@@ -205,9 +205,42 @@ The knobs that actually move the feel, all at the top of `src/game.js`:
   makes the ring effectively unrecoverable within a wave.
 - `PLAYER_CAPACITY`, `PLAYER_DMG_*`, `HULL_REGEN_TIME` — hull tuning.
 - `PLAYOUT_TIME` — how long the failure is watchable before the summary (2.6s).
-- `DUAL_FIRE_WAVE` — first wave at which two ships may fire concurrently (13).
 - `DROP_CHANCE` — per-enemy chance of dropping anything at all; `DROP_PITY` —
   the dry-streak floor.
-- `DUAL_FIRE_WAVE` — first wave where two ships may fire at once (13).
+- `DUAL_FIRE_WAVE` — first wave at which two ships may fire concurrently (13).
 - `TOKEN_SPEED` — how generous the pickup chase is.
 - `TOKEN_BONUS` — score per collected chip.
+
+## Version
+
+Current: **1.1.0** (shown bottom-left on the title screen).
+
+Every code revision bumps this. The number lives in three places and
+`test/version.js` fails the build if they disagree:
+
+1. `package.json` — the source of truth, used for tagging.
+2. `VERSION` in `src/game.js` — what a player actually sees.
+3. This file.
+
+Releases are tagged `vMAJOR.MINOR.PATCH` and published as GitHub releases whose
+notes summarise the changes below.
+
+## Changelog
+
+### 1.1.0 — phone support
+- Touch controls: hold a screen half to rotate, both halves to focus, tap to
+  start/retry. Zones cover the letterbox so thumbs work anywhere.
+- On-screen pause button on touch devices; auto-pause when the app is
+  backgrounded.
+- Pause-by-background uses `visibilitychange` rather than `blur`, which is
+  unreliable on mobile.
+
+### 1.0.0 — first release
+- Radial bullet-hell: the ring is the health bar, split into 14 arcs that each
+  own a damage pool. A breached arc ends the run.
+- Three weapon families (bolt, beam, missile) with distinct attack shapes; drops
+  carry the dropper's family and upgrade the player's gun in that image.
+- Timed ring self-repair (22s undisturbed per arc) instead of a repair pickup.
+- Damageable ship with slow hull regen; losing the ship ends the run after a
+  short playout in which the battle keeps resolving.
+- 10 enemy types, two bosses (boss/warden), 77 unit tests and 31 browser tests.

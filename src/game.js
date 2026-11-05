@@ -20,6 +20,11 @@
   var PLAYER_R = 120;      // player orbit radius (just inside the ring)
   var SEGMENTS = 14;       // ring is divided into this many arcs
 
+  // Release version, shown on the title screen. test/version.js asserts it matches
+  // package.json: releases are tagged from package.json, but this is the string a
+  // player actually sees, so the two drifting apart would mislabel the build.
+  var VERSION = '1.1.0';
+
   // Ring damage model: every segment owns its own damage pool. A bullet adds to
   // the pool of the segment it actually hits, so damage is localised and the
   // ring's appearance is a true readout of where it has been hurt. A segment
@@ -2746,6 +2751,10 @@
     Pixel.draw(ctx, 'STANDARDVIBEWARE.CLICK', W / 2, 309, {
       color: C.ringOkDim, align: 'center'
     });
+
+    // Build version, bottom-left corner — out of the way of the wordmark and the
+    // branding line, but present so a screenshot identifies its own build.
+    Pixel.draw(ctx, 'V' + VERSION, 6, H - 10, { color: C.hudDim, scale: 1 });
   }
 
   function drawGameOver(w) {
@@ -2899,6 +2908,7 @@
       return t.type;
     },
     upgrades: UPGRADES,
+    version: VERSION,
     enemyWeapon: ENEMY_WEAPON,
     dropChance: DROP_CHANCE,
     dropPity: DROP_PITY,
