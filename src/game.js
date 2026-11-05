@@ -23,7 +23,7 @@
   // Release version, shown on the title screen. test/version.js asserts it matches
   // package.json: releases are tagged from package.json, but this is the string a
   // player actually sees, so the two drifting apart would mislabel the build.
-  var VERSION = '1.1.0';
+  var VERSION = '1.2.0';
 
   // Ring damage model: every segment owns its own damage pool. A bullet adds to
   // the pool of the segment it actually hits, so damage is localised and the

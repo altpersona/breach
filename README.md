@@ -213,7 +213,7 @@ The knobs that actually move the feel, all at the top of `src/game.js`:
 
 ## Version
 
-Current: **1.1.0** (shown bottom-left on the title screen).
+Current: **1.2.0** (shown bottom-left on the title screen).
 
 Every code revision bumps this. The number lives in three places and
 `test/version.js` fails the build if they disagree:
@@ -226,6 +226,14 @@ Releases are tagged `vMAJOR.MINOR.PATCH` and published as GitHub releases whose
 notes summarise the changes below.
 
 ## Changelog
+
+### 1.2.0 — versioned builds and release discipline
+- The build now knows its own version and shows it on the title screen, so a
+  screenshot identifies which release it came from.
+- `test/version.js` fails the build if `package.json`, the in-game constant and
+  this file disagree — part of `npm run verify`.
+- `AGENTS.md` records the repo-location, versioning and release rules, plus the
+  design invariants that keep the game playable.
 
 ### 1.1.0 — phone support
 - Touch controls: hold a screen half to rotate, both halves to focus, tap to
